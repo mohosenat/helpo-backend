@@ -1,0 +1,19 @@
+{
+  "name": "helpo-server",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "@better-auth/mongo-adapter": "^1.7.15",
+    "better-auth": "^1.7.15",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mongodb": "^6.13.0",
+    "zod": "^4.0.0",
+    "jose": "^6.1.0"
+  }
+}

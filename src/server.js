@@ -1,0 +1,82 @@
+import dns from "node:dns";
+
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
+
+import "dotenv/config";
+import express from "express";
+import cors from "cors";
+import { MongoClient } from "mongodb";
+import { betterAuth } from "better-auth";
+import { jwt } from "better-auth/plugins";
+import { mongodbAdapter } from "@better-auth/mongo-adapter";
+import { toNodeHandler } from "better-auth/node";
+import eventsRouter, { setEventsDB } from "./routes/events.js";
+
+const app = express();
+
+const client = new MongoClient(process.env.MONGODB_URI);
+
+await client.connect();
+
+const db = client.db();
+
+console.log("MongoDB connected");
+
+const auth = betterAuth({
+  database: mongodbAdapter(db),
+  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:5000",
+  secret: process.env.BETTER_AUTH_SECRET,
+
+  emailAndPassword: {
+    enabled: true,
+  },
+
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID || "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+    },
+  },
+
+  plugins: [jwt()],
+
+  trustedOrigins: [
+    process.env.CLIENT_URL || "http://localhost:3000",
+  ],
+});
+
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || "http://localhost:3000",
+    credentials: true,
+  })
+);
+
+app.all("/api/auth/*", toNodeHandler(auth));
+
+app.use(express.json());
+
+setEventsDB(db);
+
+app.get("/api/health", (req, res) =>
+  res.json({
+    status: "ok",
+    service: "Helpo API",
+  })
+);
+
+app.use("/api/events", eventsRouter);
+
+app.use((err, req, res, next) => {
+  console.error(err);
+
+  res.status(500).json({
+    message: "Internal server error",
+  });
+});
+
+const port = process.env.PORT || 5000;
+
+app.listen(port, () =>
+  console.log(`Helpo API running on ${port}`)
+);
