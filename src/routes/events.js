@@ -1,8 +1,22 @@
-
 import { Router } from "express";
 import { ObjectId } from "mongodb";
 import { requireAuth } from "../middleware/auth.js";
 import { z } from "zod";
+
+function getDhakaDate() {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Dhaka",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+
+  const dateParts = Object.fromEntries(
+    parts.map(({ type, value }) => [type, value]),
+  );
+
+  return `${dateParts.year}-${dateParts.month}-${dateParts.day}`;
+}
 
 const router = Router();
 
@@ -11,19 +25,27 @@ let db;
 export function setEventsDB(database) {
   db = database;
 }
-
 const schema = z.object({
   title: z.string().min(4).max(100),
   description: z.string().min(15).max(2000),
   type: z.string().min(2),
   image: z.string().url(),
   location: z.string().min(2),
-  date: z.string().refine(
-    (v) =>
-      !Number.isNaN(Date.parse(v)) &&
-      new Date(v) > new Date(new Date().toDateString()),
-    "Date must be in the future"
-  ),
+  date: z.string().refine((value) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return false;
+    }
+
+    const [year, month, day] = value.split("-").map(Number);
+    const eventDate = new Date(Date.UTC(year, month - 1, day));
+
+    const isValidDate =
+      eventDate.getUTCFullYear() === year &&
+      eventDate.getUTCMonth() === month - 1 &&
+      eventDate.getUTCDate() === day;
+
+    return isValidDate && value > getDhakaDate();
+  }, "Event date must be in the future"),
 });
 
 // Get recent upcoming events
@@ -32,7 +54,7 @@ router.get("/recent", async (req, res) => {
     .collection("events")
     .find({
       date: {
-        $gt: new Date().toISOString().slice(0, 10),
+        $gt: getDhakaDate(),
       },
     })
     .sort({ date: 1, createdAt: -1 })
@@ -125,6 +147,7 @@ router.post("/", requireAuth, async (req, res) => {
   const result = await db.collection("events").insertOne(event);
 
   res.status(201).json({
+    message: "Event created successfully",
     event: {
       ...event,
       _id: result.insertedId,
@@ -168,10 +191,9 @@ router.post("/:id/join", requireAuth, async (req, res) => {
     throw e;
   }
 
-  await db.collection("events").updateOne(
-    { _id: event._id },
-    { $inc: { joinedCount: 1 } }
-  );
+  await db
+    .collection("events")
+    .updateOne({ _id: event._id }, { $inc: { joinedCount: 1 } });
 
   res.json({ message: "Joined successfully" });
 });
@@ -197,7 +219,7 @@ router.patch("/:id", requireAuth, async (req, res) => {
     },
     {
       $set: parsed.data,
-    }
+    },
   );
 
   if (!result.matchedCount) {
