@@ -40,21 +40,27 @@ const auth = betterAuth({
 
   plugins: [jwt()],
 
-  trustedOrigins: [
-    process.env.CLIENT_URL || "http://localhost:3000",
-  ],
+  trustedOrigins: [process.env.CLIENT_URL || "http://localhost:3000"],
 });
 
 app.use(
   cors({
     origin: process.env.CLIENT_URL || "http://localhost:3000",
     credentials: true,
-  })
+  }),
 );
 
 app.all("/api/auth/*", toNodeHandler(auth));
 
 app.use(express.json());
+
+await db.collection("event participants").createIndex(
+  { eventId: 1, userEmail: 1 },
+  {
+    unique: true,
+    name: "unique_event_user_join",
+  },
+);
 
 setEventsDB(db);
 
@@ -62,7 +68,7 @@ app.get("/api/health", (req, res) =>
   res.json({
     status: "ok",
     service: "Helpo API",
-  })
+  }),
 );
 
 app.use("/api/events", eventsRouter);
@@ -77,6 +83,4 @@ app.use((err, req, res, next) => {
 
 const port = process.env.PORT || 5000;
 
-app.listen(port, () =>
-  console.log(`Helpo API running on ${port}`)
-);
+app.listen(port, () => console.log(`Helpo API running on ${port}`));

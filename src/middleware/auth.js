@@ -1,4 +1,3 @@
-
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
 let jwks;
@@ -13,17 +12,11 @@ export async function requireAuth(req, res, next) {
       });
     }
 
-    const base =
-      process.env.BETTER_AUTH_URL || "http://localhost:5000";
+    const base = process.env.BETTER_AUTH_URL || "http://localhost:5000";
 
-    jwks ||= createRemoteJWKSet(
-      new URL(`${base}/api/auth/jwks`)
-    );
+    jwks ||= createRemoteJWKSet(new URL(`${base}/api/auth/jwks`));
 
-    const { payload } = await jwtVerify(
-      header.slice(7),
-      jwks
-    );
+    const { payload } = await jwtVerify(header.slice(7), jwks);
 
     const email = payload.email || payload.sub;
 

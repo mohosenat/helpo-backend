@@ -170,26 +170,32 @@ router.post("/:id/join", requireAuth, async (req, res) => {
   }
 
   if (event.creatorEmail === req.user.email) {
-    return res.status(400).json({ message: "You created this event" });
-  }
-
-  try {
-    await db.collection("joins").insertOne({
-      eventId: event._id.toString(),
-      eventDate: event.date,
-      userEmail: req.user.email,
-      userName: req.user.name,
-      joinedAt: new Date(),
+    return res.status(400).json({
+      message: "You created this event",
     });
-  } catch (e) {
-    if (e.code === 11000) {
-      return res.status(409).json({
-        message: "You already joined this event",
-      });
-    }
-
-    throw e;
   }
+
+  const joinsCollection = db.collection("joins");
+
+  // Check whether the user already joined
+  const existingJoin = await joinsCollection.findOne({
+    eventId: event._id.toString(),
+    userEmail: req.user.email,
+  });
+
+  if (existingJoin) {
+    return res.status(409).json({
+      message: "You already joined this event",
+    });
+  }
+
+  await joinsCollection.insertOne({
+    eventId: event._id.toString(),
+    eventDate: event.date,
+    userEmail: req.user.email,
+    userName: req.user.name,
+    joinedAt: new Date(),
+  });
 
   await db
     .collection("events")
@@ -198,37 +204,39 @@ router.post("/:id/join", requireAuth, async (req, res) => {
   res.json({ message: "Joined successfully" });
 });
 
-// Update an event
-router.patch("/:id", requireAuth, async (req, res) => {
+// Leave an event
+router.delete("/:id/leave", requireAuth, async (req, res) => {
   if (!ObjectId.isValid(req.params.id)) {
     return res.status(400).json({ message: "Invalid event id" });
   }
 
-  const parsed = schema.partial().safeParse(req.body);
+  const event = await db.collection("events").findOne({
+    _id: new ObjectId(req.params.id),
+  });
 
-  if (!parsed.success) {
+  if (!event) {
+    return res.status(404).json({ message: "Event not found" });
+  }
+
+  const result = await db.collection("joins").deleteMany({
+    eventId: event._id.toString(),
+    userEmail: req.user.email,
+  });
+
+  if (result.deletedCount === 0) {
     return res.status(400).json({
-      message: parsed.error.issues[0].message,
+      message: "You have not joined this event",
     });
   }
 
-  const result = await db.collection("events").updateOne(
-    {
-      _id: new ObjectId(req.params.id),
-      creatorEmail: req.user.email,
-    },
-    {
-      $set: parsed.data,
-    },
-  );
+  await db
+    .collection("events")
+    .updateOne(
+      { _id: event._id },
+      { $inc: { joinedCount: -result.deletedCount } },
+    );
 
-  if (!result.matchedCount) {
-    return res.status(404).json({
-      message: "Event not found or not yours",
-    });
-  }
-
-  res.json({ message: "Event updated" });
+  res.json({ message: "You left this event successfully" });
 });
 
 // Delete an event
