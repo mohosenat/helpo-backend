@@ -204,41 +204,6 @@ router.post("/:id/join", requireAuth, async (req, res) => {
   res.json({ message: "Joined successfully" });
 });
 
-// Leave an event
-router.delete("/:id/leave", requireAuth, async (req, res) => {
-  if (!ObjectId.isValid(req.params.id)) {
-    return res.status(400).json({ message: "Invalid event id" });
-  }
-
-  const event = await db.collection("events").findOne({
-    _id: new ObjectId(req.params.id),
-  });
-
-  if (!event) {
-    return res.status(404).json({ message: "Event not found" });
-  }
-
-  const result = await db.collection("joins").deleteMany({
-    eventId: event._id.toString(),
-    userEmail: req.user.email,
-  });
-
-  if (result.deletedCount === 0) {
-    return res.status(400).json({
-      message: "You have not joined this event",
-    });
-  }
-
-  await db
-    .collection("events")
-    .updateOne(
-      { _id: event._id },
-      { $inc: { joinedCount: -result.deletedCount } },
-    );
-
-  res.json({ message: "You left this event successfully" });
-});
-
 // Delete an event
 router.delete("/:id", requireAuth, async (req, res) => {
   if (!ObjectId.isValid(req.params.id)) {
