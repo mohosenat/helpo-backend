@@ -1,7 +1,3 @@
-import dns from "node:dns";
-
-dns.setServers(["8.8.8.8", "8.8.4.4"]);
-
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
@@ -81,6 +77,12 @@ app.use((err, req, res, next) => {
   });
 });
 
-const port = process.env.PORT || 5000;
+export default app;
 
-app.listen(port, () => console.log(`Helpo API running on ${port}`));
+if (process.env.NODE_ENV !== "production") {
+  const port = process.env.PORT || 5000;
+
+  app.listen(port, () => {
+    console.log(`Server is running on ${port}`);
+  });
+}
