@@ -60,6 +60,10 @@ await db.collection("event participants").createIndex(
 
 setEventsDB(db);
 
+app.get("/", (req, res) => {
+  res.send("Helpo Server is running!");
+});
+
 app.get("/api/health", (req, res) =>
   res.json({
     status: "ok",
