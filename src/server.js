@@ -23,6 +23,16 @@ const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL || "http://localhost:5000",
   secret: process.env.BETTER_AUTH_SECRET,
 
+  advanced: {
+    useSecureCookies: true,
+
+    defaultCookieAttributes: {
+      sameSite: "none",
+      secure: true,
+      httpOnly: true,
+    },
+  },
+
   emailAndPassword: {
     enabled: true,
   },
