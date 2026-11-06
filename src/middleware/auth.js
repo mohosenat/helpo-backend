@@ -33,7 +33,9 @@ export async function requireAuth(req, res, next) {
     };
 
     next();
-  } catch {
+  } catch (error) {
+    console.error("JWT verification failed:", error);
+
     return res.status(401).json({
       message: "Invalid or expired session token",
     });
