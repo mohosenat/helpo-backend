@@ -41,12 +41,21 @@ const auth = betterAuth({
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+
+      account: {
+        accountLinking: {
+          enabled: true,
+          trustedProviders: ["google"],
+        },
+      },
     },
   },
 
   plugins: [
     jwt({
       jwt: {
+        expirationTime: "7d",
+
         definePayload: ({ user }) => ({
           id: user.id,
           email: user.email,
